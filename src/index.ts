@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as express from 'express';
-import { RestMocker } from './rest-mocker';
+import { RestYAML } from './rest-yaml';
 import { ArgParser } from './arg-parser';
 
 const args = new ArgParser('yaml-api');
@@ -26,7 +26,7 @@ if (!fs.existsSync(args.get('filename'))) {
 
 const app = express();
 
-const mock = new RestMocker();
+const mock = new RestYAML();
 
 mock.watchDataFile(args.get('filename'));
 mock.bind(app);

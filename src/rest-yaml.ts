@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as YAML from 'yaml';
-import { Application, NextFunction, RequestHandler, Router, } from 'express';
+import { Application, NextFunction, RequestHandler, Router } from 'express';
 
 interface Headers {
     [header: string]: string;
@@ -26,7 +26,7 @@ interface RestData {
     [route: string]: RestRoute;
 }
 
-export class RestMocker {
+export class RestYAML {
     data?: RestData;
     router?: any;
 
@@ -139,6 +139,7 @@ export class RestMocker {
                 try {
                     fileContent = fs.readFileSync(endpoint.file, 'utf-8');
                 } catch (e) {
+                    console.error(e);
                     this.errorHandler(res, 500, 'File not found.');
                     return;
                 }
