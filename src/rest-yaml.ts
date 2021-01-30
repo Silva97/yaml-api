@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as YAML from 'yaml';
 import { Application, NextFunction, RequestHandler, Router } from 'express';
+import { DateFormat } from './date-format';
 
 interface Headers {
     [header: string]: string;
@@ -34,12 +35,24 @@ interface RestData {
     [route: string]: RestRoute;
 }
 
+interface RestOptions {
+    logFolder: string;
+}
+
 export class RestYAML {
     data?: RestData;
     router?: any;
+    options: RestOptions;
+    defaultOptions: RestOptions;
 
-    constructor(data?: RestData) {
+    constructor(data?: RestData, options?: RestOptions) {
         this.data = data;
+
+        this.options = {
+            logFolder: options?.logFolder ?? './logs',
+        };
+
+        this.defaultOptions = Object.assign({}, this.options);
     }
 
     public readDataFile(file: string) {
@@ -101,13 +114,19 @@ export class RestYAML {
 
         this.router(req, res, next);
 
-        this.log(`Request ${req.method} ${req.url} | Response ${res.statusCode}`);
+        this.log(`Request from ${req.ip} -> ${req.method} ${req.url} | Response ${res.statusCode}`);
     }
 
     protected async makeRouter() {
         const router = Router();
+        this.options = Object.assign({}, this.defaultOptions);
 
         for (const route in this.data) {
+            if (route == 'options') {
+                this.options = this.data[route] as RestOptions;
+                continue;
+            }
+
             const restRoute = this.data[route];
 
             await this.bindEndpoint(router, 'COPY', route, restRoute.copy);
@@ -253,6 +272,17 @@ export class RestYAML {
     }
 
     public log(message: string) {
-        console.log(`[REST] ${new Date().toISOString()} - ${message}`);
+        const date = new DateFormat();
+
+        const text = `[API] ${date.getFullTime()} - ${message}`;
+        console.log(text);
+
+        const filename = date.getFullDate() + '.log';
+
+        fs.mkdirSync(this.options.logFolder, {
+            recursive: true,
+
+        });
+        fs.appendFileSync(path.join(this.options.logFolder, filename), text + '\n', 'utf-8');
     }
 }
