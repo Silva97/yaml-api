@@ -32,7 +32,6 @@ api.watchDataFile(args.get('filename'));
 api.bind(app);
 
 const [address, port] = args.get('address').split(':');
-console.log(address, port);
 
 app.listen(port, address || '0.0.0.0')
     .on('error', () => {

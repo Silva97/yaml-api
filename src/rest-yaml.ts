@@ -246,6 +246,8 @@ export class RestYAML {
                 return (req, res) => this.errorHandler(res, 500, 'Handler not found.');
             }
         }
+
+        return (req, res) => res.header(headers).status(status).send();
     }
 
     protected replaceVars(req: any, content: string | object, endpoint: RestEndpoint) {
