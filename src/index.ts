@@ -7,7 +7,7 @@ const args = new ArgParser('yaml-api');
 args
     .add(['--help', '-h'], false, 'Show this help message')
     .add('filename', '', 'The YAML full or relative file path')
-    .add('address', ':3000', 'The address and port to bind the API');
+    .add('address', ':3000', 'The address:port to bind the API');
 
 args.parse(process.argv);
 

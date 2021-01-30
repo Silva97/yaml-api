@@ -82,7 +82,7 @@ export class ArgParser {
     }
 
     public showHelp(prologue?: string, epilogue?: string) {
-        const alignment = 25;
+        const alignment = 16;
 
         if (prologue) {
             console.log(prologue + '\n');
@@ -98,7 +98,7 @@ export class ArgParser {
         console.log('\nPOSITIONAL');
         for (const arg of this.positional) {
             const defaultText = arg.defaultValue
-                ? ` (default: ${arg.defaultValue})`
+                ? ` (default: '${arg.defaultValue}')`
                 : '';
 
             this.printAligned(arg.names[0], 4, alignment, arg.description + defaultText);
