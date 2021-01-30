@@ -17,10 +17,17 @@ interface RestEndpoint {
 }
 
 interface RestRoute {
+    copy?: RestEndpoint;
     delete?: RestEndpoint;
     get?: RestEndpoint;
+    head?: RestEndpoint;
+    lock?: RestEndpoint;
+    merge?: RestEndpoint;
+    options?: RestEndpoint;
+    patch?: RestEndpoint;
     post?: RestEndpoint;
     put?: RestEndpoint;
+    trace?: RestEndpoint;
 }
 
 interface RestData {
@@ -54,24 +61,28 @@ export class RestYAML {
     }
 
     public showEndpoints() {
+        const show = (method: string, route: string, endpoint: RestEndpoint) => {
+            if (!endpoint) {
+                return;
+            }
+
+            console.log(`${method} ${route}`);
+        }
+
         for (const route in this.data) {
             const restRoute = this.data[route];
 
-            if (restRoute.delete) {
-                console.log(`DELETE ${route}`);
-            }
-
-            if (restRoute.get) {
-                console.log(`GET ${route}`);
-            }
-
-            if (restRoute.post) {
-                console.log(`POST ${route}`);
-            }
-
-            if (restRoute.put) {
-                console.log(`PUT ${route}`);
-            }
+            show('COPY', route, restRoute.copy);
+            show('DELETE', route, restRoute.delete);
+            show('GET', route, restRoute.get);
+            show('HEAD', route, restRoute.head);
+            show('LOCK', route, restRoute.lock);
+            show('MERGE', route, restRoute.merge);
+            show('OPTIONS', route, restRoute.options);
+            show('PATCH', route, restRoute.patch);
+            show('POST', route, restRoute.post);
+            show('PUT', route, restRoute.put);
+            show('TRACE', route, restRoute.trace);
         }
     }
 
@@ -99,10 +110,17 @@ export class RestYAML {
         for (const route in this.data) {
             const restRoute = this.data[route];
 
+            await this.bindEndpoint(router, 'COPY', route, restRoute.copy);
             await this.bindEndpoint(router, 'DELETE', route, restRoute.delete);
             await this.bindEndpoint(router, 'GET', route, restRoute.get);
+            await this.bindEndpoint(router, 'HEAD', route, restRoute.head);
+            await this.bindEndpoint(router, 'LOCK', route, restRoute.lock);
+            await this.bindEndpoint(router, 'MERGE', route, restRoute.merge);
+            await this.bindEndpoint(router, 'OPTIONS', route, restRoute.options);
+            await this.bindEndpoint(router, 'PATCH', route, restRoute.patch);
             await this.bindEndpoint(router, 'POST', route, restRoute.post);
             await this.bindEndpoint(router, 'PUT', route, restRoute.put);
+            await this.bindEndpoint(router, 'TRACE', route, restRoute.trace);
         }
 
         this.router = router;
@@ -117,17 +135,38 @@ export class RestYAML {
         endpoint.vars = vars;
 
         switch (method) {
+            case 'COPY':
+                router.copy(finalRoute, await this.getEndpointHandler(endpoint));
+                break;
             case 'DELETE':
                 router.delete(finalRoute, await this.getEndpointHandler(endpoint));
                 break;
             case 'GET':
                 router.get(finalRoute, await this.getEndpointHandler(endpoint));
                 break;
+            case 'HEAD':
+                router.head(finalRoute, await this.getEndpointHandler(endpoint));
+                break;
+            case 'LOCK':
+                router.lock(finalRoute, await this.getEndpointHandler(endpoint));
+                break;
+            case 'MERGE':
+                router.merge(finalRoute, await this.getEndpointHandler(endpoint));
+                break;
+            case 'OPTIONS':
+                router.options(finalRoute, await this.getEndpointHandler(endpoint));
+                break;
+            case 'PATCH':
+                router.patch(finalRoute, await this.getEndpointHandler(endpoint));
+                break;
             case 'POST':
                 router.post(finalRoute, await this.getEndpointHandler(endpoint));
                 break;
             case 'PUT':
                 router.put(finalRoute, await this.getEndpointHandler(endpoint));
+                break;
+            case 'TRACE':
+                router.trace(finalRoute, await this.getEndpointHandler(endpoint));
                 break;
         }
     }
