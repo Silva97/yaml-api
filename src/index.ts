@@ -7,7 +7,7 @@ const args = new ArgParser('yaml-api');
 args
     .add(['--help', '-h'], false, 'Show this help message')
     .add('filename', '', 'The YAML full or relative file path')
-    .add('port', '3000', 'The port to bind the API');
+    .add('address', ':3000', 'The address and port to bind the API');
 
 args.parse(process.argv);
 
@@ -31,11 +31,14 @@ const api = new RestYAML();
 api.watchDataFile(args.get('filename'));
 api.bind(app);
 
-app.listen(args.get('port'))
+const [address, port] = args.get('address').split(':');
+console.log(address, port);
+
+app.listen(port, address || '0.0.0.0')
     .on('error', () => {
-        console.error(`ERROR: Unable to bind port ${args.get('port')}.`);
+        console.error(`ERROR: Unable to bind address ${address}:${port}`);
         process.exit(1);
     })
     .on('listening', () => {
-        api.log(`Started API on port ${args.get('port')}.`);
+        api.log(`Started API on address ${address}:${port}`);
     });
