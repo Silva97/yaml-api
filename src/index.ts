@@ -6,7 +6,8 @@ import { ArgParser } from './arg-parser';
 const args = new ArgParser('yaml-api');
 args
     .add(['--help', '-h'], false, 'Show this help message')
-    .add('filename', '', 'The YAML full or relative file path');
+    .add('filename', '', 'The YAML full or relative file path')
+    .add('port', '3000', 'The port to bind the API');
 
 args.parse(process.argv);
 
@@ -25,11 +26,16 @@ if (!fs.existsSync(args.get('filename'))) {
 }
 
 const app = express();
+const api = new RestYAML();
 
-const mock = new RestYAML();
+api.watchDataFile(args.get('filename'));
+api.bind(app);
 
-mock.watchDataFile(args.get('filename'));
-mock.bind(app);
-
-mock.showEndpoints();
-app.listen(3000);
+app.listen(args.get('port'))
+    .on('error', () => {
+        console.error(`ERROR: Unable to bind port ${args.get('port')}.`);
+        process.exit(1);
+    })
+    .on('listening', () => {
+        api.log(`Started API on port ${args.get('port')}.`);
+    });

@@ -97,7 +97,11 @@ export class ArgParser {
 
         console.log('\nPOSITIONAL');
         for (const arg of this.positional) {
-            this.printAligned(arg.names[0], 4, alignment, arg.description);
+            const defaultText = arg.defaultValue
+                ? ` (default: ${arg.defaultValue})`
+                : '';
+
+            this.printAligned(arg.names[0], 4, alignment, arg.description + defaultText);
         }
 
         if (epilogue) {

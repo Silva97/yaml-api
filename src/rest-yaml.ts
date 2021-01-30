@@ -171,7 +171,7 @@ export class RestYAML {
             });
     }
 
-    protected log(message: string) {
+    public log(message: string) {
         console.log(`[REST] ${new Date().toISOString()} - ${message}`);
     }
 }
