@@ -10,6 +10,7 @@ interface Headers {
 interface RestEndpoint {
     status?: number;
     headers?: Headers;
+    vars: string[];
     content?: string | object;
     file?: string;
     handler?: string;
@@ -98,24 +99,49 @@ export class RestYAML {
         for (const route in this.data) {
             const restRoute = this.data[route];
 
-            if (restRoute.delete) {
-                router.delete(route, await this.getEndpointHandler(restRoute.delete));
-            }
-
-            if (restRoute.get) {
-                router.get(route, await this.getEndpointHandler(restRoute.get));
-            }
-
-            if (restRoute.post) {
-                router.post(route, await this.getEndpointHandler(restRoute.post));
-            }
-
-            if (restRoute.put) {
-                router.put(route, await this.getEndpointHandler(restRoute.put));
-            }
+            await this.bindEndpoint(router, 'DELETE', route, restRoute.delete);
+            await this.bindEndpoint(router, 'GET', route, restRoute.get);
+            await this.bindEndpoint(router, 'POST', route, restRoute.post);
+            await this.bindEndpoint(router, 'PUT', route, restRoute.put);
         }
 
         this.router = router;
+    }
+
+    protected async bindEndpoint(router: Router, method: string, route: string, endpoint?: RestEndpoint) {
+        if (!endpoint) {
+            return;
+        }
+
+        const [finalRoute, vars] = this.transformRoute(route);
+        endpoint.vars = vars;
+
+        switch (method) {
+            case 'DELETE':
+                router.delete(finalRoute, await this.getEndpointHandler(endpoint));
+                break;
+            case 'GET':
+                router.get(finalRoute, await this.getEndpointHandler(endpoint));
+                break;
+            case 'POST':
+                router.post(finalRoute, await this.getEndpointHandler(endpoint));
+                break;
+            case 'PUT':
+                router.put(finalRoute, await this.getEndpointHandler(endpoint));
+                break;
+        }
+    }
+
+    protected transformRoute(route: string): [string, string[]] {
+        const varList = [];
+
+        return [
+            route.replace(/\{([a-z_]+)\}/gi, (match: string, variable: string) => {
+                varList.push(variable);
+                return ':' + variable;
+            }),
+            varList,
+        ];
     }
 
     protected async getEndpointHandler(endpoint: RestEndpoint): Promise<RequestHandler> {
@@ -129,7 +155,10 @@ export class RestYAML {
         }
 
         if (endpoint.content) {
-            return (req, res) => res.header(headers).status(status).send(endpoint.content);
+            return (req, res) => res
+                .header(headers)
+                .status(status)
+                .send(this.replaceVars(req, endpoint.content, endpoint));
         }
 
         if (endpoint.file) {
@@ -159,6 +188,19 @@ export class RestYAML {
                 return (req, res) => this.errorHandler(res, 500, 'Handler not found.');
             }
         }
+    }
+
+    protected replaceVars(req: any, content: string | object, endpoint: RestEndpoint) {
+        if (typeof content == 'object') {
+            content = JSON.stringify(content);
+        }
+
+        const varNames = endpoint.vars.join('|');
+
+        const regex = new RegExp('\\$\\{(' + varNames + ')\\}', 'g');
+        content = content.replace(regex, (match, name) => req.params[name] ?? '');
+
+        return content;
     }
 
     protected errorHandler(res: any, status: number, message?: string, headers?: Headers) {
