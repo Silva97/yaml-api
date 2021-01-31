@@ -1,7 +1,13 @@
-interface Argument {
+import { InvalidOption, UndefinedArgument } from "./errors";
+
+interface ArgumentOptions {
+    defaultValue?: any;
+    required?: boolean;
+}
+
+interface Argument extends ArgumentOptions {
     names: string[];
     description: string;
-    defaultValue?: any;
 }
 
 interface ArgumentValue {
@@ -22,24 +28,25 @@ export class ArgParser {
         this.binary = binary;
     }
 
-    public add(names: string | string[], defaultValue?: any, description?: string) {
+    public add(names: string | string[], description?: string, options?: ArgumentOptions) {
         if (typeof names == 'string') {
             names = [names];
         }
 
         const argument: Argument = {
             names,
-            defaultValue,
+            defaultValue: options?.defaultValue,
             description: description ?? '',
+            required: options?.required ?? false,
         };
 
         if (this.isOptional(names[0])) {
             this.optional.push(argument);
-            this.set(this.parseArgName(argument.names), defaultValue || false);
+            this.set(this.parseArgName(argument.names), options?.defaultValue || false);
         } else {
             this.positional.push(argument);
-            const value = defaultValue
-                ? String(defaultValue)
+            const value = options?.defaultValue
+                ? String(options?.defaultValue)
                 : '';
 
             this.set(this.parseArgName(argument.names), value);
@@ -64,11 +71,10 @@ export class ArgParser {
             if (this.isOptional(param)) {
                 const arg = this.findArgument(param);
                 if (!arg) {
-                    console.error(`The option '${param}' is invalid.`);
-                    process.exit(ARG_INVALID_STATUS);
+                    throw new InvalidOption(param);
                 }
 
-                this.set(this.parseArgName(arg.names), true);
+                this.set(this.parseArgName(arg.names), !arg.defaultValue);
                 continue;
             }
 
@@ -78,6 +84,15 @@ export class ArgParser {
 
             const arg = this.positional[position++];
             this.set(this.parseArgName(arg.names), param);
+        }
+
+        // Checking required positional arguments
+        for (; position < this.positional.length; position++) {
+            const argument = this.positional[position];
+
+            if (argument.required) {
+                throw new UndefinedArgument(argument.names[0]);
+            }
         }
     }
 
