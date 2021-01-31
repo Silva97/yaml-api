@@ -82,7 +82,7 @@ export class ArgParser {
     }
 
     public showHelp(prologue?: string, epilogue?: string) {
-        const alignment = 25;
+        const alignment = 16;
 
         if (prologue) {
             console.log(prologue + '\n');
@@ -92,12 +92,16 @@ export class ArgParser {
         this.printAligned(this.getCommandLineUsage() + '\n', 2);
 
         for (const arg of this.optional) {
-            this.printAligned(arg.names.join(','), 4, alignment, arg.description);
+            this.printAligned(arg.names.join(','), 2, alignment, arg.description);
         }
 
         console.log('\nPOSITIONAL');
         for (const arg of this.positional) {
-            this.printAligned(arg.names[0], 4, alignment, arg.description);
+            const defaultText = arg.defaultValue
+                ? ` (default: '${arg.defaultValue}')`
+                : '';
+
+            this.printAligned(arg.names[0], 2, alignment, arg.description + defaultText);
         }
 
         if (epilogue) {
@@ -106,13 +110,16 @@ export class ArgParser {
     }
 
     public getCommandLineUsage() {
-        let cmd = this.binary + ' [';
+        const names: string[] = [];
+        let cmd = this.binary;
 
         for (const arg of this.optional) {
-            cmd += this.getShortestName(arg);
+            names.push(this.getShortestName(arg));
         }
 
-        cmd += ']';
+        if (names.length) {
+            cmd += ' [' + names.join(',') + ']';
+        }
 
         for (const arg of this.positional) {
             cmd += ' ' + arg.names[0];
