@@ -7,6 +7,7 @@ interface ArgumentOptions {
 
 interface Argument extends ArgumentOptions {
     names: string[];
+    optionName: string;
     description: string;
 }
 
@@ -35,6 +36,7 @@ export class ArgParser {
 
         const argument: Argument = {
             names,
+            optionName: this.parseArgName(names),
             defaultValue: options?.defaultValue,
             description: description ?? '',
             required: options?.required ?? false,
@@ -42,14 +44,14 @@ export class ArgParser {
 
         if (this.isOptional(names[0])) {
             this.optional.push(argument);
-            this.set(this.parseArgName(argument.names), options?.defaultValue || false);
+            this.set(argument.optionName, options?.defaultValue || false);
         } else {
             this.positional.push(argument);
             const value = options?.defaultValue
                 ? String(options?.defaultValue)
                 : '';
 
-            this.set(this.parseArgName(argument.names), value);
+            this.set(argument.optionName, value);
         }
 
         return this;
@@ -74,7 +76,7 @@ export class ArgParser {
                     throw new InvalidOption(param);
                 }
 
-                this.set(this.parseArgName(arg.names), !arg.defaultValue);
+                this.set(arg.optionName, !arg.defaultValue);
                 continue;
             }
 
@@ -83,14 +85,16 @@ export class ArgParser {
             }
 
             const arg = this.positional[position++];
-            this.set(this.parseArgName(arg.names), param);
+            this.set(arg.optionName, param);
         }
+    }
 
+    public validateArguments() {
         // Checking required positional arguments
-        for (; position < this.positional.length; position++) {
+        for (let position = 0; position < this.positional.length; position++) {
             const argument = this.positional[position];
 
-            if (argument.required) {
+            if (argument.required && !this.get(argument.optionName)) {
                 throw new UndefinedArgument(argument.names[0]);
             }
         }
