@@ -238,8 +238,8 @@ export class RestYAML {
                 try {
                     fileContent = fs.readFileSync(endpoint.file, 'utf-8');
                 } catch (e) {
-                    console.error(e);
-                    this.errorHandler(res, 500, 'File not found.');
+                    this.rawLog(e.stack);
+                    this.errorHandler(res, 500, e);
                     return;
                 }
 
@@ -257,7 +257,7 @@ export class RestYAML {
                     handler(req, res);
                 } catch (e) {
                     this.rawLog(e.stack);
-                    this.errorHandler(res, 500, 'Internal server error.');
+                    this.errorHandler(res, 500, e);
                 }
             }
         }
@@ -278,13 +278,23 @@ export class RestYAML {
         return content;
     }
 
-    protected errorHandler(res: any, status: number, message?: string, headers?: Headers) {
+    protected errorHandler(res: any, status: number, error?: Error, message?: string) {
+        message = message ?? 'Internal server error.';
+
+        if (this.options.debug) {
+            res
+                .status(status)
+                .send({
+                    message,
+                    error: error?.stack.split('\n') ?? null,
+                });
+            return;
+        }
+
         res
             .status(status)
-            .header(headers)
             .send({
-                error: true,
-                message: message ?? 'Internal error.',
+                message,
             });
     }
 
