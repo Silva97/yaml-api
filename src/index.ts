@@ -6,6 +6,7 @@ import { ArgParser } from './arg-parser';
 const args = new ArgParser('yaml-api');
 args
     .add(['--help', '-h'], false, 'Show this help message')
+    .add(['--list', '-l'], false, 'Only list the endpoints of the given YAML file')
     .add('filename', '', 'The YAML full or relative file path')
     .add('address', ':3000', 'The address:port to bind the API');
 
@@ -25,10 +26,17 @@ if (!fs.existsSync(args.get('filename'))) {
     process.exit(1);
 }
 
-const app = express();
 const api = new RestYAML();
 
+if (args.get('list')) {
+    api.readDataFile(args.get('filename'));
+    api.showEndpoints();
+    process.exit(0);
+}
+
 api.watchDataFile(args.get('filename'));
+
+const app = express();
 api.bind(app);
 
 const [address, port] = args.get('address').split(':');
