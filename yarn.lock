@@ -1053,6 +1053,11 @@
     "@types/yargs" "^15.0.0"
     chalk "^4.0.0"
 
+"@silva97/ansi@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@silva97/ansi/-/ansi-1.1.0.tgz#cc4b65743ed39b9cd3039e27170f6bff262f82e9"
+  integrity sha512-bnJzesxtrlg1KZ8+WLv7x8zKW6kMM9TZJHNmtkdaGAEdE0NFXR9YzlwK1pp20sgrRhYcgOXZMgKi8566W7IXcw==
+
 "@sinonjs/commons@^1.7.0":
   version "1.8.2"
   resolved "https://registry.yarnpkg.com/@sinonjs/commons/-/commons-1.8.2.tgz#858f5c4b48d80778fde4b9d541f27edc0d56488b"
