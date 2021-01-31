@@ -49,7 +49,7 @@ export class ArgParser {
             this.positional.push(argument);
             const value = options?.defaultValue
                 ? String(options?.defaultValue)
-                : '';
+                : options?.defaultValue;
 
             this.set(argument.optionName, value);
         }
@@ -71,7 +71,7 @@ export class ArgParser {
         let position = 0;
         for (const param of argv) {
             if (this.isOptional(param)) {
-                const arg = this.findArgument(param);
+                const arg = this.findOptionalArgument(param);
                 if (!arg) {
                     throw new InvalidOption(param);
                 }
@@ -171,12 +171,8 @@ export class ArgParser {
         return argument.startsWith('-');
     }
 
-    protected findArgument(name: string): Argument | undefined {
-        const list = (this.isOptional(name))
-            ? this.optional
-            : this.positional;
-
-        return list.find((value) => value.names.includes(name));;
+    protected findOptionalArgument(name: string): Argument | undefined {
+        return this.optional.find((value) => value.names.includes(name));;
     }
 
     protected parseArgName(names: string[]) {
