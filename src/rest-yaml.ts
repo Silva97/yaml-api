@@ -42,7 +42,7 @@ interface RestOptions {
 
 export class RestYAML {
     data?: RestData;
-    router?: any;
+    router?: Router;
     options: RestOptions;
     defaultOptions: RestOptions;
 
@@ -240,11 +240,14 @@ export class RestYAML {
         }
 
         if (endpoint.handler) {
-            try {
-                return await import(path.join(process.cwd(), endpoint.handler));
-            } catch (e) {
-                console.error(e);
-                return (req, res) => this.errorHandler(res, 500, 'Handler not found.');
+            return async (req, res) => {
+                try {
+                    const handler = await import(path.join(process.cwd(), endpoint.handler));
+                    handler(req, res);
+                } catch (e) {
+                    this.rawLog(e.stack);
+                    this.errorHandler(res, 500, 'Internal server error.');
+                }
             }
         }
 
@@ -277,14 +280,17 @@ export class RestYAML {
     public log(message: string) {
         const date = new DateFormat();
 
-        const text = ansi`[%{bold;f.blue}API%{normal}] ${date.getFullTime()} - %{bold}${message}`;
-        console.log(text);
+        this.rawLog(ansi`[%{bold;f.blue}API%{normal}] ${date.getFullTime()} - %{bold}${message}`);
+    }
 
+    public rawLog(text: string) {
+        const date = new DateFormat();
         const filename = date.getFullDate() + '.log';
+
+        console.log(text);
 
         fs.mkdirSync(this.options.logFolder, {
             recursive: true,
-
         });
         fs.appendFileSync(path.join(this.options.logFolder, filename), purify(text) + '\n', 'utf-8');
     }
