@@ -2,15 +2,17 @@ import * as fs from 'fs';
 import * as express from 'express';
 import { RestYAML } from './rest-yaml';
 import { ArgParser } from './arg-parser';
+import { beautifulTry } from './utils/beatiful-try';
 
+beautifulTry.helpMessage = 'See help: yaml-api --help';
 const args = new ArgParser('yaml-api');
 args
-    .add(['--help', '-h'], false, 'Show this help message')
-    .add(['--list', '-l'], false, 'Only list the endpoints of the given YAML file')
-    .add('filename', '', 'The YAML full or relative file path')
-    .add('address', ':3000', 'The address:port to bind the API');
+    .add(['--help', '-h'], 'Show this help message')
+    .add(['--list', '-l'], 'Only list the endpoints of the given YAML file')
+    .add('filename', 'The YAML full or relative file path', { required: true })
+    .add('address', 'The address:port to bind the API', { defaultValue: ':3000' });
 
-args.parse(process.argv);
+beautifulTry(() => args.parse(process.argv));
 
 if (args.get('help')) {
     args.showHelp(
@@ -20,6 +22,8 @@ if (args.get('help')) {
 
     process.exit(0);
 }
+
+beautifulTry(() => args.validateArguments());
 
 if (!fs.existsSync(args.get('filename'))) {
     console.error(`File '${args.get('filename')}' not found.`);
