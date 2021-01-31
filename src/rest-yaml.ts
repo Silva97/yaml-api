@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as YAML from 'yaml';
 import { Application, NextFunction, RequestHandler, Router } from 'express';
 import { DateFormat } from './date-format';
+import { ansi, purify } from '@silva97/ansi';
 
 interface Headers {
     [header: string]: string;
@@ -79,7 +80,7 @@ export class RestYAML {
                 return;
             }
 
-            console.log(`${method} ${route}`);
+            console.log(ansi`%{bold}${method}%{normal} ${route}`);
         }
 
         for (const route in this.data) {
@@ -276,7 +277,7 @@ export class RestYAML {
     public log(message: string) {
         const date = new DateFormat();
 
-        const text = `[API] ${date.getFullTime()} - ${message}`;
+        const text = ansi`[%{bold;f.blue}API%{normal}] ${date.getFullTime()} - %{bold}${message}`;
         console.log(text);
 
         const filename = date.getFullDate() + '.log';
@@ -285,6 +286,6 @@ export class RestYAML {
             recursive: true,
 
         });
-        fs.appendFileSync(path.join(this.options.logFolder, filename), text + '\n', 'utf-8');
+        fs.appendFileSync(path.join(this.options.logFolder, filename), purify(text) + '\n', 'utf-8');
     }
 }
