@@ -38,6 +38,7 @@ interface RestData {
 
 interface RestOptions {
     logFolder: string;
+    debug: boolean;
 }
 
 export class RestYAML {
@@ -49,11 +50,21 @@ export class RestYAML {
     constructor(data?: RestData, options?: RestOptions) {
         this.data = data;
 
-        this.options = {
-            logFolder: options?.logFolder ?? './logs',
+        this.defaultOptions = {
+            logFolder: './logs',
+            debug: false,
         };
 
-        this.defaultOptions = Object.assign({}, this.options);
+        if (options) {
+            this.setOptions(options);
+        }
+    }
+
+    public setOptions(options: RestOptions) {
+        this.options = {
+            logFolder: options?.logFolder ?? this.defaultOptions.logFolder,
+            debug: options?.debug ?? this.defaultOptions.debug,
+        };
     }
 
     public readDataFile(file: string) {
@@ -124,7 +135,7 @@ export class RestYAML {
 
         for (const route in this.data) {
             if (route == 'options') {
-                this.options = this.data[route] as RestOptions;
+                this.setOptions(this.data[route] as RestOptions);
                 continue;
             }
 
