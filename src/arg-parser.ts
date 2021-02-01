@@ -1,7 +1,14 @@
-interface Argument {
-    names: string[];
-    description: string;
+import { InvalidOption, UndefinedArgument } from "./errors";
+
+interface ArgumentOptions {
     defaultValue?: any;
+    required?: boolean;
+}
+
+interface Argument extends ArgumentOptions {
+    names: string[];
+    optionName: string;
+    description: string;
 }
 
 interface ArgumentValue {
@@ -22,27 +29,29 @@ export class ArgParser {
         this.binary = binary;
     }
 
-    public add(names: string | string[], defaultValue?: any, description?: string) {
+    public add(names: string | string[], description?: string, options?: ArgumentOptions) {
         if (typeof names == 'string') {
             names = [names];
         }
 
         const argument: Argument = {
             names,
-            defaultValue,
+            optionName: this.parseArgName(names),
+            defaultValue: options?.defaultValue,
             description: description ?? '',
+            required: options?.required ?? false,
         };
 
         if (this.isOptional(names[0])) {
             this.optional.push(argument);
-            this.set(this.parseArgName(argument.names), defaultValue || false);
+            this.set(argument.optionName, options?.defaultValue || false);
         } else {
             this.positional.push(argument);
-            const value = defaultValue
-                ? String(defaultValue)
-                : '';
+            const value = options?.defaultValue
+                ? String(options?.defaultValue)
+                : options?.defaultValue;
 
-            this.set(this.parseArgName(argument.names), value);
+            this.set(argument.optionName, value);
         }
 
         return this;
@@ -62,13 +71,12 @@ export class ArgParser {
         let position = 0;
         for (const param of argv) {
             if (this.isOptional(param)) {
-                const arg = this.findArgument(param);
+                const arg = this.findOptionalArgument(param);
                 if (!arg) {
-                    console.error(`The option '${param}' is invalid.`);
-                    process.exit(ARG_INVALID_STATUS);
+                    throw new InvalidOption(param);
                 }
 
-                this.set(this.parseArgName(arg.names), true);
+                this.set(arg.optionName, !arg.defaultValue);
                 continue;
             }
 
@@ -77,7 +85,18 @@ export class ArgParser {
             }
 
             const arg = this.positional[position++];
-            this.set(this.parseArgName(arg.names), param);
+            this.set(arg.optionName, param);
+        }
+    }
+
+    public validateArguments() {
+        // Checking required positional arguments
+        for (let position = 0; position < this.positional.length; position++) {
+            const argument = this.positional[position];
+
+            if (argument.required && !this.get(argument.optionName)) {
+                throw new UndefinedArgument(argument.names[0]);
+            }
         }
     }
 
@@ -152,12 +171,8 @@ export class ArgParser {
         return argument.startsWith('-');
     }
 
-    protected findArgument(name: string): Argument | undefined {
-        const list = (this.isOptional(name))
-            ? this.optional
-            : this.positional;
-
-        return list.find((value) => value.names.includes(name));;
+    protected findOptionalArgument(name: string): Argument | undefined {
+        return this.optional.find((value) => value.names.includes(name));;
     }
 
     protected parseArgName(names: string[]) {

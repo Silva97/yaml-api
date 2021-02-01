@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as YAML from 'yaml';
 import { Application, NextFunction, RequestHandler, Router } from 'express';
 import { DateFormat } from './date-format';
+import { ansi, purify } from '@silva97/ansi';
 
 interface Headers {
     [header: string]: string;
@@ -37,22 +38,33 @@ interface RestData {
 
 interface RestOptions {
     logFolder: string;
+    debug: boolean;
 }
 
 export class RestYAML {
     data?: RestData;
-    router?: any;
+    router?: Router;
     options: RestOptions;
     defaultOptions: RestOptions;
 
     constructor(data?: RestData, options?: RestOptions) {
         this.data = data;
 
-        this.options = {
-            logFolder: options?.logFolder ?? './logs',
+        this.defaultOptions = {
+            logFolder: './logs',
+            debug: false,
         };
 
-        this.defaultOptions = Object.assign({}, this.options);
+        if (options) {
+            this.setOptions(options);
+        }
+    }
+
+    public setOptions(options: RestOptions) {
+        this.options = {
+            logFolder: options?.logFolder ?? this.defaultOptions.logFolder,
+            debug: options?.debug ?? this.defaultOptions.debug,
+        };
     }
 
     public readDataFile(file: string) {
@@ -79,7 +91,7 @@ export class RestYAML {
                 return;
             }
 
-            console.log(`${method} ${route}`);
+            console.log(ansi`%{bold}${method}%{normal} ${route}`);
         }
 
         for (const route in this.data) {
@@ -123,7 +135,7 @@ export class RestYAML {
 
         for (const route in this.data) {
             if (route == 'options') {
-                this.options = this.data[route] as RestOptions;
+                this.setOptions(this.data[route] as RestOptions);
                 continue;
             }
 
@@ -226,8 +238,8 @@ export class RestYAML {
                 try {
                     fileContent = fs.readFileSync(endpoint.file, 'utf-8');
                 } catch (e) {
-                    console.error(e);
-                    this.errorHandler(res, 500, 'File not found.');
+                    this.rawLog(e.stack);
+                    this.errorHandler(res, 500, e);
                     return;
                 }
 
@@ -239,11 +251,14 @@ export class RestYAML {
         }
 
         if (endpoint.handler) {
-            try {
-                return await import(path.join(process.cwd(), endpoint.handler));
-            } catch (e) {
-                console.error(e);
-                return (req, res) => this.errorHandler(res, 500, 'Handler not found.');
+            return async (req, res) => {
+                try {
+                    const handler = await import(path.join(process.cwd(), endpoint.handler));
+                    handler(req, res);
+                } catch (e) {
+                    this.rawLog(e.stack);
+                    this.errorHandler(res, 500, e);
+                }
             }
         }
 
@@ -263,28 +278,41 @@ export class RestYAML {
         return content;
     }
 
-    protected errorHandler(res: any, status: number, message?: string, headers?: Headers) {
+    protected errorHandler(res: any, status: number, error?: Error, message?: string) {
+        message = message ?? 'Internal server error.';
+
+        if (this.options.debug) {
+            res
+                .status(status)
+                .send({
+                    message,
+                    error: error?.stack.split('\n') ?? null,
+                });
+            return;
+        }
+
         res
             .status(status)
-            .header(headers)
             .send({
-                error: true,
-                message: message ?? 'Internal error.',
+                message,
             });
     }
 
     public log(message: string) {
         const date = new DateFormat();
 
-        const text = `[API] ${date.getFullTime()} - ${message}`;
-        console.log(text);
+        this.rawLog(ansi`[%{bold;f.blue}API%{normal}] ${date.getFullTime()} - %{bold}${message}`);
+    }
 
+    public rawLog(text: string) {
+        const date = new DateFormat();
         const filename = date.getFullDate() + '.log';
+
+        console.log(text);
 
         fs.mkdirSync(this.options.logFolder, {
             recursive: true,
-
         });
-        fs.appendFileSync(path.join(this.options.logFolder, filename), text + '\n', 'utf-8');
+        fs.appendFileSync(path.join(this.options.logFolder, filename), purify(text) + '\n', 'utf-8');
     }
 }
