@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import * as fs from 'fs';
 import * as express from 'express';
 import { RestYAML } from './rest-yaml';

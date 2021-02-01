@@ -24,9 +24,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "rm -rf dist/ && tsc",
+    "build": "rm -rf dist/ && tsc && chmod +x dist/index.js",
     "coverage": "jest --coverage",
-    "prepublishOnly": "yarn build",
+    "prepublishOnly": "yarn build && yarn test",
     "start": "node dist/index.js",
     "test": "jest"
   },
