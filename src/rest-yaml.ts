@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as dotenv from 'dotenv';
 import * as YAML from 'yaml';
 import { Application, NextFunction, RequestHandler, Router } from 'express';
 import { DateFormat } from './date-format';
@@ -41,11 +42,16 @@ interface RestOptions {
     debug: boolean;
 }
 
+export interface RestEnvironment {
+    [variable: string]: string;
+}
+
 export class RestYAML {
     data?: RestData;
-    router?: Router;
-    options: RestOptions;
     defaultOptions: RestOptions;
+    environment: RestEnvironment;
+    options: RestOptions;
+    router?: Router;
 
     constructor(data?: RestData, options?: RestOptions) {
         this.data = data;
@@ -72,17 +78,26 @@ export class RestYAML {
     }
 
     public watchDataFile(file: string) {
-        this.readDataFile(file);
-        this.makeRouter();
-
-        fs.watchFile(file, async () => {
-            this.log(`Reloading routes from '${file}'...`);
-
+        const reload = async () => {
+            this.environment = dotenv.config().parsed ?? {};
             this.readDataFile(file);
             await this.makeRouter();
+        };
 
+        reload();
+
+        const loader = async (currentState: fs.Stats) => {
+            if (!currentState.size) {
+                return;
+            }
+
+            this.log(`Reloading routes from '${file}'...`);
+            await reload();
             this.log('Successful reloaded the routes.');
-        });
+        };
+
+        fs.watchFile(file, loader);
+        fs.watchFile('.env', loader);
     }
 
     public showEndpoints() {
@@ -254,7 +269,7 @@ export class RestYAML {
             return async (req, res) => {
                 try {
                     const handler = await import(path.join(process.cwd(), endpoint.handler));
-                    handler(req, res);
+                    handler(req, res, this.environment);
                 } catch (e) {
                     this.rawLog(e.stack);
                     this.errorHandler(res, 500, e);
