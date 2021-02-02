@@ -3,7 +3,7 @@ import { ansi } from '@silva97/ansi';
 
 ansi.enabled = false;
 
-let mockExit, mockError;
+let mockExit: jest.SpyInstance, mockError: jest.SpyInstance;
 
 beforeEach(() => {
     mockExit = jest.spyOn(process, 'exit').mockImplementation();
