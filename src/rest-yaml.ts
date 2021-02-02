@@ -13,7 +13,6 @@ interface Headers {
 interface RestEndpoint {
     status?: number;
     headers?: Headers;
-    vars: string[];
     content?: string | object;
     file?: string;
     handler?: string;
@@ -33,28 +32,27 @@ interface RestRoute {
     trace?: RestEndpoint;
 }
 
-interface RestData {
-    [route: string]: RestRoute;
-}
-
 interface RestOptions {
     logFolder: string;
     debug: boolean;
 }
 
+export interface RestData {
+    [route: string]: RestRoute;
+}
 export interface RestEnvironment {
     [variable: string]: any;
 }
 
 export class RestYAML {
-    data?: RestData;
-    defaultOptions: RestOptions;
-    environment: RestEnvironment;
-    options: RestOptions;
-    router?: Router;
+    private data?: RestData;
+    private defaultOptions: RestOptions;
+    private environment: RestEnvironment;
+    private options: RestOptions;
+    private router?: Router;
 
     constructor(data?: RestData, options?: RestOptions) {
-        this.data = data;
+        this.updateData(data);
 
         this.defaultOptions = {
             logFolder: './logs',
@@ -76,7 +74,7 @@ export class RestYAML {
     }
 
     public readDataFile(file: string) {
-        this.data = YAML.parse(fs.readFileSync(file, 'utf-8'));
+        this.updateData(YAML.parse(fs.readFileSync(file, 'utf-8')));
     }
 
     public watchDataFile(file: string) {
@@ -146,7 +144,7 @@ export class RestYAML {
         this.log(`Request from ${req.ip} -> ${req.method} ${req.url} | Response ${res.statusCode}`);
     }
 
-    protected async makeRouter() {
+    public async makeRouter() {
         const router = Router();
         this.options = Object.assign({}, this.defaultOptions);
 
@@ -180,8 +178,7 @@ export class RestYAML {
             return;
         }
 
-        const [finalRoute, vars] = this.transformRoute(route);
-        endpoint.vars = vars;
+        const finalRoute = this.transformRoute(route);
 
         switch (method) {
             case 'COPY':
@@ -220,16 +217,10 @@ export class RestYAML {
         }
     }
 
-    protected transformRoute(route: string): [string, string[]] {
-        const varList = [];
-
-        return [
-            route.replace(/\{([a-z_]+)\}/gi, (match: string, variable: string) => {
-                varList.push(variable);
-                return ':' + variable;
-            }),
-            varList,
-        ];
+    protected transformRoute(route: string) {
+        return route.replace(/\{([a-z0-9_]+)\}/gi, (match: string, variable: string) => {
+            return ':' + variable;
+        });
     }
 
     protected async getEndpointHandler(endpoint: RestEndpoint): Promise<RequestHandler> {
