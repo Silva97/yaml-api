@@ -6,6 +6,8 @@ import { RestYAML } from './rest-yaml';
 import { ArgParser } from './arg-parser';
 import { beautifulTry } from './utils/beatiful-try';
 
+export * from './rest-yaml';
+
 beautifulTry.helpMessage = 'See help: yaml-api --help';
 const args = new ArgParser('yaml-api');
 args

@@ -1,8 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as dotenv from 'dotenv';
 import * as YAML from 'yaml';
 import { Application, NextFunction, RequestHandler, Router } from 'express';
-import { DateFormat } from './date-format';
+import { DateFormat } from './utils/date-format';
 import { ansi, purify } from '@silva97/ansi';
 
 interface Headers {
@@ -41,11 +42,16 @@ interface RestOptions {
     debug: boolean;
 }
 
+export interface RestEnvironment {
+    [variable: string]: any;
+}
+
 export class RestYAML {
     data?: RestData;
-    router?: Router;
-    options: RestOptions;
     defaultOptions: RestOptions;
+    environment: RestEnvironment;
+    options: RestOptions;
+    router?: Router;
 
     constructor(data?: RestData, options?: RestOptions) {
         this.data = data;
@@ -61,9 +67,11 @@ export class RestYAML {
     }
 
     public setOptions(options: RestOptions) {
+        const parseBoolean = (value: any) => value && value != 'false';
+
         this.options = {
             logFolder: options?.logFolder ?? this.defaultOptions.logFolder,
-            debug: options?.debug ?? this.defaultOptions.debug,
+            debug: parseBoolean(options?.debug ?? this.defaultOptions.debug),
         };
     }
 
@@ -72,17 +80,26 @@ export class RestYAML {
     }
 
     public watchDataFile(file: string) {
-        this.readDataFile(file);
-        this.makeRouter();
-
-        fs.watchFile(file, async () => {
-            this.log(`Reloading routes from '${file}'...`);
-
+        const reload = async () => {
+            this.environment = dotenv.config().parsed ?? {};
             this.readDataFile(file);
             await this.makeRouter();
+        };
 
+        reload();
+
+        const loader = async (currentState: fs.Stats) => {
+            if (!currentState.size) {
+                return;
+            }
+
+            this.log(`Reloading routes from '${file}'...`);
+            await reload();
             this.log('Successful reloaded the routes.');
-        });
+        };
+
+        fs.watchFile(file, loader);
+        fs.watchFile('.env', loader);
     }
 
     public showEndpoints() {
@@ -135,7 +152,8 @@ export class RestYAML {
 
         for (const route in this.data) {
             if (route == 'options') {
-                this.setOptions(this.data[route] as RestOptions);
+                const options = this.replaceVars(null, this.data[route]);
+                this.setOptions(JSON.parse(options));
                 continue;
             }
 
@@ -228,7 +246,7 @@ export class RestYAML {
             return (req, res) => res
                 .header(headers)
                 .status(status)
-                .send(this.replaceVars(req, endpoint.content, endpoint));
+                .send(this.replaceVars(req, endpoint.content));
         }
 
         if (endpoint.file) {
@@ -254,7 +272,7 @@ export class RestYAML {
             return async (req, res) => {
                 try {
                     const handler = await import(path.join(process.cwd(), endpoint.handler));
-                    handler(req, res);
+                    handler(req, res, this.environment);
                 } catch (e) {
                     this.rawLog(e.stack);
                     this.errorHandler(res, 500, e);
@@ -265,15 +283,14 @@ export class RestYAML {
         return (req, res) => res.header(headers).status(status).send();
     }
 
-    protected replaceVars(req: any, content: string | object, endpoint: RestEndpoint) {
+    protected replaceVars(req: any, content: string | object) {
         if (typeof content == 'object') {
             content = JSON.stringify(content);
         }
 
-        const varNames = endpoint.vars.join('|');
-
-        const regex = new RegExp('\\$\\{(' + varNames + ')\\}', 'g');
-        content = content.replace(regex, (match, name) => req.params[name] ?? '');
+        content = content.replace(/\$\{([a-z0-9_]+)\}/gi, (match, name) => {
+            return req?.params[name] ?? this.environment[name] ?? '';
+        });
 
         return content;
     }
