@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as dotenv from 'dotenv';
 import * as YAML from 'yaml';
 import { Application, NextFunction, RequestHandler, Router } from 'express';
-import { DateFormat } from './date-format';
+import { DateFormat } from './utils/date-format';
 import { ansi, purify } from '@silva97/ansi';
 
 interface Headers {
