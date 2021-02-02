@@ -43,7 +43,7 @@ interface RestOptions {
 }
 
 export interface RestEnvironment {
-    [variable: string]: string;
+    [variable: string]: any;
 }
 
 export class RestYAML {
@@ -67,9 +67,11 @@ export class RestYAML {
     }
 
     public setOptions(options: RestOptions) {
+        const parseBoolean = (value: any) => value && value != 'false';
+
         this.options = {
             logFolder: options?.logFolder ?? this.defaultOptions.logFolder,
-            debug: options?.debug ?? this.defaultOptions.debug,
+            debug: parseBoolean(options?.debug ?? this.defaultOptions.debug),
         };
     }
 
@@ -150,7 +152,8 @@ export class RestYAML {
 
         for (const route in this.data) {
             if (route == 'options') {
-                this.setOptions(this.data[route] as RestOptions);
+                const options = this.replaceVars(null, this.data[route]);
+                this.setOptions(JSON.parse(options));
                 continue;
             }
 
@@ -243,7 +246,7 @@ export class RestYAML {
             return (req, res) => res
                 .header(headers)
                 .status(status)
-                .send(this.replaceVars(req, endpoint.content, endpoint));
+                .send(this.replaceVars(req, endpoint.content));
         }
 
         if (endpoint.file) {
@@ -280,15 +283,14 @@ export class RestYAML {
         return (req, res) => res.header(headers).status(status).send();
     }
 
-    protected replaceVars(req: any, content: string | object, endpoint: RestEndpoint) {
+    protected replaceVars(req: any, content: string | object) {
         if (typeof content == 'object') {
             content = JSON.stringify(content);
         }
 
-        const varNames = endpoint.vars.join('|');
-
-        const regex = new RegExp('\\$\\{(' + varNames + ')\\}', 'g');
-        content = content.replace(regex, (match, name) => req.params[name] ?? '');
+        content = content.replace(/\$\{([a-z0-9_]+)\}/gi, (match, name) => {
+            return req?.params[name] ?? this.environment[name] ?? '';
+        });
 
         return content;
     }
