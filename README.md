@@ -75,7 +75,7 @@ To use an environment variable on options, just use `${VAR_NAME}` like the value
 ### Variables and Parameters
 Variable's values expands like [template strings] on JavaScript, so you can concatenate it with normal text like: `envFile: ${BASE_DIR}/.env`
 
-On routes you can also have parameters on the path of the endpoint using `{param_name} in the URL segment that is expected a parameter.
+On routes you can also have parameters on the path of the endpoint using `{param_name}` in the URL segment that is expected a parameter.
 ```yaml
 /users/{id}:
   get:
@@ -89,7 +89,7 @@ Like you can see on the example above, it's possible to expands environment vari
 
 ## Writing the YAML Document
 The YAML document's root consist of an object with optional `options` attribute and the list of routes to be created on the API.
-Each route is an object having attributes to each HTTP method that route support, and the object of the HTTP method is an endpoint consisting of the following optional attributes that you can on the example below.
+Each route is an object having attributes to each HTTP method that route support, and the object of the HTTP method is an endpoint consisting of the following optional attributes that you can see on the example below.
 
 ```yaml
 /route:
