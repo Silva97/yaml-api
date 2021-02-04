@@ -5,6 +5,7 @@ import * as YAML from 'yaml';
 import { Application, NextFunction, RequestHandler, Router } from 'express';
 import { DateFormat } from './utils/date-format';
 import { ansi, purify } from '@silva97/ansi';
+import { FileNotFound } from './errors';
 
 interface Headers {
     [header: string]: string;
@@ -13,7 +14,6 @@ interface Headers {
 interface RestEndpoint {
     status?: number;
     headers?: Headers;
-    vars: string[];
     content?: string | object;
     file?: string;
     handler?: string;
@@ -33,32 +33,33 @@ interface RestRoute {
     trace?: RestEndpoint;
 }
 
-interface RestData {
+interface RestOptions {
+    debug?: boolean;
+    envFile?: string;
+    logDir?: string;
+}
+
+export interface RestData {
     [route: string]: RestRoute;
 }
-
-interface RestOptions {
-    logFolder: string;
-    debug: boolean;
-}
-
 export interface RestEnvironment {
     [variable: string]: any;
 }
 
 export class RestYAML {
-    data?: RestData;
-    defaultOptions: RestOptions;
-    environment: RestEnvironment;
-    options: RestOptions;
-    router?: Router;
+    private data?: RestData;
+    private defaultOptions: RestOptions;
+    private environment: RestEnvironment;
+    private options: RestOptions;
+    private router?: Router;
 
     constructor(data?: RestData, options?: RestOptions) {
-        this.data = data;
+        this.updateData(data);
 
         this.defaultOptions = {
-            logFolder: './logs',
             debug: false,
+            envFile: '.env',
+            logDir: './logs',
         };
 
         if (options) {
@@ -70,13 +71,14 @@ export class RestYAML {
         const parseBoolean = (value: any) => value && value != 'false';
 
         this.options = {
-            logFolder: options?.logFolder ?? this.defaultOptions.logFolder,
             debug: parseBoolean(options?.debug ?? this.defaultOptions.debug),
+            envFile: options?.envFile ?? this.defaultOptions.envFile,
+            logDir: options?.logDir ?? this.defaultOptions.logDir,
         };
     }
 
     public readDataFile(file: string) {
-        this.data = YAML.parse(fs.readFileSync(file, 'utf-8'));
+        this.updateData(YAML.parse(fs.readFileSync(file, 'utf-8')));
     }
 
     public watchDataFile(file: string) {
@@ -99,7 +101,7 @@ export class RestYAML {
         };
 
         fs.watchFile(file, loader);
-        fs.watchFile('.env', loader);
+        fs.watchFile(this.options.envFile, loader);
     }
 
     public showEndpoints() {
@@ -146,7 +148,7 @@ export class RestYAML {
         this.log(`Request from ${req.ip} -> ${req.method} ${req.url} | Response ${res.statusCode}`);
     }
 
-    protected async makeRouter() {
+    public async makeRouter() {
         const router = Router();
         this.options = Object.assign({}, this.defaultOptions);
 
@@ -180,8 +182,7 @@ export class RestYAML {
             return;
         }
 
-        const [finalRoute, vars] = this.transformRoute(route);
-        endpoint.vars = vars;
+        const finalRoute = this.transformRoute(route);
 
         switch (method) {
             case 'COPY':
@@ -220,22 +221,17 @@ export class RestYAML {
         }
     }
 
-    protected transformRoute(route: string): [string, string[]] {
-        const varList = [];
-
-        return [
-            route.replace(/\{([a-z_]+)\}/gi, (match: string, variable: string) => {
-                varList.push(variable);
-                return ':' + variable;
-            }),
-            varList,
-        ];
+    protected transformRoute(route: string) {
+        return route.replace(/\{([a-z0-9_]+)\}/gi, (match: string, variable: string) => {
+            return ':' + variable;
+        });
     }
 
     protected async getEndpointHandler(endpoint: RestEndpoint): Promise<RequestHandler> {
         const status = endpoint.status ?? 200;
         const headers: Headers = {
             'Content-Type': 'application/json',
+            'X-Powered-By': 'Express + yaml-api',
         };
 
         if (endpoint.headers) {
@@ -251,16 +247,16 @@ export class RestYAML {
 
         if (endpoint.file) {
             return (req, res) => {
-                let fileContent;
+                let fileContent: string;
 
-                try {
-                    fileContent = fs.readFileSync(endpoint.file, 'utf-8');
-                } catch (e) {
-                    this.rawLog(e.stack);
-                    this.errorHandler(res, 500, e);
+                if (!fs.existsSync(endpoint.file)) {
+                    const error = new FileNotFound(endpoint.file);
+                    this.rawLog(error.stack);
+                    this.errorHandler(res, 500, error);
                     return;
                 }
 
+                fileContent = fs.readFileSync(endpoint.file, 'utf-8');
                 res
                     .header(headers)
                     .status(status)
@@ -272,6 +268,7 @@ export class RestYAML {
             return async (req, res) => {
                 try {
                     const handler = await import(path.join(process.cwd(), endpoint.handler));
+                    res.header(headers);
                     handler(req, res, this.environment);
                 } catch (e) {
                     this.rawLog(e.stack);
@@ -289,7 +286,10 @@ export class RestYAML {
         }
 
         content = content.replace(/\$\{([a-z0-9_]+)\}/gi, (match, name) => {
-            return req?.params[name] ?? this.environment[name] ?? '';
+            return req?.params[name]
+                ?? this.environment[name]
+                ?? process.env[name]
+                ?? '';
         });
 
         return content;
@@ -327,9 +327,9 @@ export class RestYAML {
 
         console.log(text);
 
-        fs.mkdirSync(this.options.logFolder, {
+        fs.mkdirSync(this.options.logDir, {
             recursive: true,
         });
-        fs.appendFileSync(path.join(this.options.logFolder, filename), purify(text) + '\n', 'utf-8');
+        fs.appendFileSync(path.join(this.options.logDir, filename), purify(text) + '\n', 'utf-8');
     }
 }

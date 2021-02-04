@@ -1,8 +1,10 @@
 export class DateFormat {
     date: Date;
 
-    constructor() {
-        this.date = new Date();
+    constructor(time?: string) {
+        this.date = time
+            ? new Date(time)
+            : new Date();
     }
 
     public getFullDate(separator: string = '-') {

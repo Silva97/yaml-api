@@ -17,9 +17,7 @@ interface ArgumentValue {
 
 const ARG_INVALID_STATUS = 2;
 
-
 export class ArgParser {
-
     protected positional: Argument[] = [];
     protected optional: Argument[] = [];
     protected values: ArgumentValue = {};
