@@ -1,14 +1,13 @@
 import { RestYAML, RestData } from '../src/rest-yaml';
 import { ansi } from '@silva97/ansi';
-import express from 'express';
-import request from 'supertest';
+import * as express from 'express';
+import * as request from 'supertest';
 
 jest.mock('fs');
 import fs from 'fs';
 
 ansi.enabled = false;
 let mockLog: jest.SpyInstance;
-let mockReadFile: jest.SpyInstance;
 
 const data: RestData = {
     '/test': {
@@ -37,6 +36,9 @@ const data: RestData = {
                 message: 'Deleting id ${id}!',
             },
         },
+        patch: {
+            handler: './tests/handler-test.js',
+        },
     },
 };
 
@@ -45,7 +47,6 @@ let app: express.Application;
 
 beforeEach(() => {
     mockLog = jest.spyOn(console, 'log').mockImplementation();
-    mockReadFile = jest.spyOn(fs, 'readFileSync').mockReturnValue('{ "message": "mocked-file" }');
 
     api = new RestYAML(data, { logFolder: './logs', debug: true });
     api.makeRouter();
@@ -60,7 +61,8 @@ test('test showEndpoints()', () => {
     expect(mockLog).toBeCalledWith('POST /test');
     expect(mockLog).toBeCalledWith('PUT /test');
     expect(mockLog).toBeCalledWith('DELETE /test/{id}');
-    expect(mockLog).toBeCalledTimes(4);
+    expect(mockLog).toBeCalledWith('PATCH /test/{id}');
+    expect(mockLog).toBeCalledTimes(5);
 });
 
 test('handler with content defined expects to return JSON encoded content', async () => {
@@ -70,12 +72,28 @@ test('handler with content defined expects to return JSON encoded content', asyn
     expect(response.body).toEqual(data['/test'].get.content);
 });
 
-test('handler with file defined expects to read the file content', async () => {
+/**
+ * @todo: Make compatible with ts-jest
+*/
+// test('handler with file defined expects to read the file content', async () => {
+//     const mockExists = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+//     const mockReadFile = jest.spyOn(fs, 'readFileSync').mockReturnValue('{ "message": "mocked-file" }');
+//     const response = await request(app).post('/test');
+
+//     expect(mockExists).toBeCalledTimes(1);
+//     expect(mockReadFile).toBeCalledTimes(1);
+//     expect(response.status).toBe(201);
+//     expect(response.body).toEqual({ message: 'mocked-file' });
+
+//     mockExists.mockRestore();
+//     mockReadFile.mockRestore();
+// });
+
+test('handler with file defined that is not exists expects 500 response', async () => {
     const response = await request(app).post('/test');
 
-    expect(mockReadFile).toBeCalledTimes(1);
-    expect(response.status).toBe(201);
-    expect(response.body).toEqual({ message: 'mocked-file' });
+    expect(response.body).toEqual({ message: 'Internal server error.' });
+    expect(response.status).toBe(500);
 });
 
 test('handler with headers defined expects to set the headers', async () => {
@@ -91,4 +109,11 @@ test('test parameter expansion on content', async () => {
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual({ message: 'Deleting id 777!' });
+});
+
+test('test custom handler', async () => {
+    const response = await request(app).patch('/test/777');
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ message: 'Hello!' });
 });

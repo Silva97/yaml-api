@@ -16,7 +16,7 @@ describe('Validate wrong command lines', () => {
     test('Invalid option expects error', () => {
         expect(() => {
             args.parse(['node', './test', '--invalid', 'test']);
-        }).toThrow(InvalidOption);
+        }).toThrowError("The option '--invalid' is invalid");
     });
 
     test('Undefined positional argument that is required expects error', () => {
@@ -24,7 +24,7 @@ describe('Validate wrong command lines', () => {
 
         expect(() => {
             args.validateArguments();
-        }).toThrow(UndefinedArgument);
+        }).toThrowError("The expected argument 'first' is not defined");
     });
 });
 
