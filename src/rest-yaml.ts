@@ -286,7 +286,10 @@ export class RestYAML {
         }
 
         content = content.replace(/\$\{([a-z0-9_]+)\}/gi, (match, name) => {
-            return req?.params[name] ?? this.environment[name] ?? '';
+            return req?.params[name]
+                ?? this.environment[name]
+                ?? process.env[name]
+                ?? '';
         });
 
         return content;
