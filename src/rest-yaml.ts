@@ -5,6 +5,7 @@ import * as YAML from 'yaml';
 import { Application, NextFunction, RequestHandler, Router } from 'express';
 import { DateFormat } from './utils/date-format';
 import { ansi, purify } from '@silva97/ansi';
+import { FileNotFound } from './errors';
 
 interface Headers {
     [header: string]: string;
@@ -227,6 +228,7 @@ export class RestYAML {
         const status = endpoint.status ?? 200;
         const headers: Headers = {
             'Content-Type': 'application/json',
+            'X-Powered-By': 'Express + yaml-api',
         };
 
         if (endpoint.headers) {
@@ -242,16 +244,16 @@ export class RestYAML {
 
         if (endpoint.file) {
             return (req, res) => {
-                let fileContent;
+                let fileContent: string;
 
-                try {
-                    fileContent = fs.readFileSync(endpoint.file, 'utf-8');
-                } catch (e) {
-                    this.rawLog(e.stack);
-                    this.errorHandler(res, 500, e);
+                if (!fs.existsSync(endpoint.file)) {
+                    const error = new FileNotFound(endpoint.file);
+                    this.rawLog(error.stack);
+                    this.errorHandler(res, 500, error);
                     return;
                 }
 
+                fileContent = fs.readFileSync(endpoint.file, 'utf-8');
                 res
                     .header(headers)
                     .status(status)
@@ -263,6 +265,7 @@ export class RestYAML {
             return async (req, res) => {
                 try {
                     const handler = await import(path.join(process.cwd(), endpoint.handler));
+                    res.header(headers);
                     handler(req, res, this.environment);
                 } catch (e) {
                     this.rawLog(e.stack);
