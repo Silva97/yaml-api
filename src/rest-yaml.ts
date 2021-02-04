@@ -34,8 +34,9 @@ interface RestRoute {
 }
 
 interface RestOptions {
-    logFolder: string;
-    debug: boolean;
+    debug?: boolean;
+    envFile?: string;
+    logDir?: string;
 }
 
 export interface RestData {
@@ -56,8 +57,9 @@ export class RestYAML {
         this.updateData(data);
 
         this.defaultOptions = {
-            logFolder: './logs',
             debug: false,
+            envFile: '.env',
+            logDir: './logs',
         };
 
         if (options) {
@@ -69,8 +71,9 @@ export class RestYAML {
         const parseBoolean = (value: any) => value && value != 'false';
 
         this.options = {
-            logFolder: options?.logFolder ?? this.defaultOptions.logFolder,
             debug: parseBoolean(options?.debug ?? this.defaultOptions.debug),
+            envFile: options?.envFile ?? this.defaultOptions.envFile,
+            logDir: options?.logDir ?? this.defaultOptions.logDir,
         };
     }
 
@@ -98,7 +101,7 @@ export class RestYAML {
         };
 
         fs.watchFile(file, loader);
-        fs.watchFile('.env', loader);
+        fs.watchFile(this.options.envFile, loader);
     }
 
     public showEndpoints() {
@@ -321,9 +324,9 @@ export class RestYAML {
 
         console.log(text);
 
-        fs.mkdirSync(this.options.logFolder, {
+        fs.mkdirSync(this.options.logDir, {
             recursive: true,
         });
-        fs.appendFileSync(path.join(this.options.logFolder, filename), purify(text) + '\n', 'utf-8');
+        fs.appendFileSync(path.join(this.options.logDir, filename), purify(text) + '\n', 'utf-8');
     }
 }

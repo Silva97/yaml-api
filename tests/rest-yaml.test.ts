@@ -48,7 +48,7 @@ let app: express.Application;
 beforeEach(() => {
     mockLog = jest.spyOn(console, 'log').mockImplementation();
 
-    api = new RestYAML(data, { logFolder: './logs', debug: true });
+    api = new RestYAML(data, { logDir: './logs', debug: true });
     api.makeRouter();
     app = express();
     api.bind(app);
