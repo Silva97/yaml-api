@@ -21,7 +21,7 @@ beautifulTry(() => args.parse(process.argv));
 if (args.get('help')) {
     args.showHelp(
         'Developed by Luiz Felipe <felipe.silva337@yahoo.com>\n' +
-        'Version 1.0.0 - Distributed under the MIT License.\n'
+        'Version 1.0.1 - Distributed under the MIT License.\n'
     );
 
     process.exit(0);

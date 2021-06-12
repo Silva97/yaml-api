@@ -136,6 +136,13 @@ export class RestYAML {
 
     public bind(app: Application) {
         app.use(this.handler.bind(this));
+        app.use((request, response) => {
+            response
+                .status(404)
+                .send({
+                    message: 'Route not found',
+                });
+        });
     }
 
     protected handler(req: any, res: any, next: NextFunction) {
