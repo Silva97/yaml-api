@@ -23,7 +23,7 @@ Using **yaml-api** you can easily make a RESTful API for _mocking_, _testing_ or
 ```
 
 # Installation and Usage
-You can install `yaml-api` package and use as command-line tool or import the class to use as library.
+You can install `yaml-api` package and use it as command-line tool.
 
 ```bash
 npm i yaml-api

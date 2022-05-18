@@ -1,11 +1,14 @@
-name: npm-publish
+name: run-tests
 on:
   push:
     branches:
-      - master
+      - '*'
+  pull_request:
+    branches:
+      - '*'
 
 jobs:
-  publish:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -13,7 +16,5 @@ jobs:
         with:
           node-version: 16
       - run: yarn
-      - uses: JS-DevTools/npm-publish@v1
-        with:
-          token: ${{ secrets.NPM_TOKEN }}
-          access: public
+      - run: yarn build
+      - run: yarn test
